@@ -58,7 +58,7 @@ class NBLearn:
         word = raw_word
 
         while len(word) > 0 and word[0] in NBLearn.EXTRA_SYMBOLS:
-            word = word[:-1]
+            word = word[1:]
 
         while len(word) > 0 and word[-1] in NBLearn.EXTRA_SYMBOLS:
             word = word[:-1]
