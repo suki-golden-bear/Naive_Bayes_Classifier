@@ -1,163 +1,69 @@
 #Author: Suki Sahota
-import math
-from nblearn import NBLearn
+class NBLearn:
+    #Set of stop words
+    STOP_WORDS = { 'the', 'and', 'The', 'was', 'for', 'with', 'were', 'that' } 
 
-class NBClassify:
-    global_vocab = set()
-    cardinality_of_vocab = 0
-    
-    pos_map = {}
-    tru_map = {}
-    neg_map = {}
-    dec_map = {}
-    
-    num_pos = 0
-    num_tru = 0
-    num_neg = 0
-    num_dec = 0
+    AMP = '&'
+    CLOSING_ANG = '>'
+    CLOSING_BRA = ']'
+    CLOSING_PAR = ')'
+    COLON = ':'
+    COLON_SEMI = ';'
+    COMMA = ','
+    DASH = '-'
+    DOT = '.'
+    EQUAL = '='
+    EXCLAMATION = '!'
+    OPENING_ANG = '<'
+    OPENING_BRA = '['
+    OPENING_PAR = '('
+    PLUS = '+'
+    POUND = '#'
+    QUESTION = '?'
+    QUOTE_DOUBLE = '"'
+    QUOTE_SINGLE = '\''
+    SLASH = '/'
+    STAR = '*'
+    EXTRA_SYMBOLS = { AMP, CLOSING_ANG, CLOSING_BRA, CLOSING_PAR, COLON,
+        COLON_SEMI, COMMA, DASH, DOT, EQUAL, EXCLAMATION, OPENING_ANG,
+        OPENING_BRA, OPENING_PAR, PLUS, POUND, QUESTION, QUOTE_DOUBLE,
+        QUOTE_SINGLE, SLASH, STAR }
 
-    pos_mode_val = 0
-    tru_mode_val = 0
-    neg_mode_val = 0
-    dec_mode_val = 0
-
-    @staticmethod
-    def set_learned_variables(master_dict):
-        NBClassify.global_vocab = set(master_dict["global_vocab"])
-        NBClassify.cardinality_of_vocab = len(NBClassify.global_vocab)
-
-        NBClassify.pos_map = master_dict["pos_map"]
-        NBClassify.tru_map = master_dict["tru_map"]
-        NBClassify.neg_map = master_dict["neg_map"]
-        NBClassify.dec_map = master_dict["dec_map"]
-
-        NBClassify.num_pos = master_dict["num_pos"]
-        NBClassify.num_tru = master_dict["num_tru"]
-        NBClassify.num_neg = master_dict["num_neg"]
-        NBClassify.num_dec = master_dict["num_dec"]
-
-        NBClassify.pos_mode_val = master_dict["pos_mode_val"]
-        NBClassify.tru_mode_val = master_dict["tru_mode_val"]
-        NBClassify.neg_mode_val = master_dict["neg_mode_val"]
-        NBClassify.dec_mode_val = master_dict["dec_mode_val"]
+    global_vocab = set() #List of entire vocabulary for all classes
 
     @staticmethod
-    def process_unknown_review(f, test_map, num_test):
+    def process_known_review(f, first_map, num_first, first_mode_val,
+        second_map, num_second, second_mode_val):
         for line in f:
             for raw_word in line.split():
                 word = NBLearn.sanitize_word(raw_word.strip())
                 if len(word) < 3:
                     continue
                 if word not in NBLearn.STOP_WORDS:
+                    NBLearn.global_vocab.add(word) #Add to global set
                     #Add to given dict and increment its respective count
-                    test_map[word] = test_map.get(word, 0) + 1
-                    num_test = num_test + 1
+                    first_map[word] = first_map.get(word, 0) + 1
+                    first_mode_val = max(first_map[word], first_mode_val)
+                    num_first = num_first + 1
 
-        return test_map, num_test
+                    second_map[word] = second_map.get(word, 0) + 1
+                    second_mode_val = max(second_map[word], second_mode_val)
+                    num_second = num_second + 1
 
-    @staticmethod
-    def classify_label_a(test_map, num_test):
-        truthful_prob = NBClassify.find_truth_prob(test_map, num_test)
-        deceptive_prob = NBClassify.find_decep_prob(test_map, num_test)
-        return 'truthful' if truthful_prob > deceptive_prob else 'deceptive'
-
-    @staticmethod
-    def find_truth_prob(test_map, num_test):
-        #For log-sum-exp trick
-        max_a_k = math.log(
-            (NBClassify.tru_mode_val+1) \
-            /(NBClassify.num_tru+NBClassify.cardinality_of_vocab))
-
-        tru_prob = max_a_k #Return value for truthful probability
-
-        for term, times in test_map.items():
-            #Need to continue if term is not in class map
-            if term not in NBClassify.tru_map:
-                continue
-            freq = NBClassify.tru_map[term]
-            p_hat = (freq+1) \
-                /(NBClassify.num_tru+NBClassify.cardinality_of_vocab)
-            a_k = math.log(p_hat)
-
-            cur_prob = math.e**(a_k-max_a_k)
-            tru_prob = tru_prob+(times*cur_prob)
-
-        return tru_prob
+        return num_first, num_second, first_mode_val, second_mode_val
 
     @staticmethod
-    def find_decep_prob(test_map, num_test):
-        #For log-sum-exp trick
-        max_a_k = math.log(
-            (NBClassify.dec_mode_val+1) \
-            /(NBClassify.num_dec+NBClassify.cardinality_of_vocab))
+    def sanitize_word(raw_word):
+        #word = raw_word.lower() #I think case matters for deceptive reviews
+        word = raw_word
 
-        dec_prob = max_a_k #Return value for deceptive probability
+        while len(word) > 0 and word[0] in NBLearn.EXTRA_SYMBOLS:
+            word = word[:-1]
 
-        for term, times in test_map.items():
-            #Need to continue if term is not in class map
-            if term not in NBClassify.dec_map:
-                continue
-            freq = NBClassify.dec_map[term]
-            p_hat = (freq+1) \
-                /(NBClassify.num_dec+NBClassify.cardinality_of_vocab)
-            a_k = math.log(p_hat)
+        while len(word) > 0 and word[-1] in NBLearn.EXTRA_SYMBOLS:
+            word = word[:-1]
 
-            cur_prob = math.e**(a_k-max_a_k)
-            dec_prob = dec_prob+(times*cur_prob)
-
-        return dec_prob
-
-    @staticmethod
-    def classify_label_b(test_map, num_test):
-        positive_prob = NBClassify.find_pos_prob(test_map, num_test)
-        negative_prob = NBClassify.find_neg_prob(test_map, num_test)
-        return 'positive' if positive_prob > negative_prob else 'negative'
-
-    @staticmethod
-    def find_pos_prob(test_map, num_test):
-        #For log-sum-exp trick
-        max_a_k = math.log(
-            (NBClassify.pos_mode_val+1) \
-            /(NBClassify.num_pos+NBClassify.cardinality_of_vocab))
-
-        pos_prob = max_a_k #Return value for positive probability
-
-        for term, times in test_map.items():
-            #Need to continue if term is not in class map
-            if term not in NBClassify.pos_map:
-                continue
-            freq = NBClassify.pos_map[term]
-            p_hat = (freq+1) \
-                /(NBClassify.num_pos+NBClassify.cardinality_of_vocab)
-            a_k = math.log(p_hat)
-
-            cur_prob = math.e**(a_k-max_a_k)
-            pos_prob = pos_prob+(times*cur_prob)
-
-        return pos_prob
-
-    @staticmethod
-    def find_neg_prob(test_map, num_test):
-        #For log-sum-exp trick
-        max_a_k = math.log(
-            (NBClassify.neg_mode_val+1) \
-            /(NBClassify.num_neg+NBClassify.cardinality_of_vocab))
-
-        neg_prob = max_a_k #Return value for negative probability
-
-        for term, times in test_map.items():
-            #Need to continue if term is not in class map
-            if term not in NBClassify.neg_map:
-                continue
-            freq = NBClassify.neg_map[term]
-            p_hat = (freq+1) \
-                /(NBClassify.num_neg+NBClassify.cardinality_of_vocab)
-            a_k = math.log(p_hat)
-
-            cur_prob = math.e**(a_k-max_a_k)
-            neg_prob = neg_prob+(times*cur_prob)
-
-        return neg_prob
+        return word
 
 ###Driver code###
 import glob
@@ -165,27 +71,91 @@ import json
 import os
 import sys
 
+POS = 'positive_polarity'
+POS_TRUTH = 'truthful_from_TripAdvisor'
+POS_DECEP = 'deceptive_from_MTurk'
+NEG = 'negative_polarity'
+NEG_TRUTH = 'truthful_from_Web'
+NEG_DECEP = 'deceptive_from_MTurk' #Same name as from positive, deceptive
+
+#Maps to store key=word and value=frequency of word
+pos_map = {} #Positive
+tru_map = {} #Truthful
+neg_map = {} #Negative
+dec_map = {} #Deceptive
+
+#Total number of non–stop words per classification
+num_pos = 0
+num_tru = 0
+num_neg = 0
+num_dec = 0
+
+pos_mode_val = 0
+tru_mode_val = 0
+neg_mode_val = 0
+dec_mode_val = 0
+
 input_path = sys.argv[1]
-master_dict = {}
 
-#Grab information from model
-with open('nbmodel.txt') as json_file:
-    master_dict = json.load(json_file)
+#Train on Positive and Truthful reviews
+for filename in glob.glob(
+    os.path.join(input_path, POS, POS_TRUTH, "fold?", "*.txt")):
+    with open(filename, 'r') as f:
+        num_pos, num_tru, pos_mode_val, tru_mode_val \
+            = NBLearn.process_known_review(f, pos_map, num_pos, pos_mode_val,
+                tru_map, num_tru, tru_mode_val)
 
-NBClassify.set_learned_variables(master_dict)
+#Train on Positive and Deceptive reviews
+for filename in glob.glob(
+    os.path.join(input_path, POS, POS_DECEP, "fold?", "*.txt")):
+    with open(filename, 'r') as f:
+        num_pos, num_dec, pos_mode_val, dec_mode_val \
+            = NBLearn.process_known_review(f, pos_map, num_pos, pos_mode_val,
+                dec_map, num_dec, dec_mode_val)
 
-#Create nboutput.txt file
-with open('nboutput.txt', 'w') as outfile:
-    for filename in glob.iglob('./'+input_path+'/*/*/*/*.txt'):
-        pathn = os.path.relpath(filename) #Print as third element in output
-        with open(filename, 'r') as f:
-            test_map = {}
-            num_test = 0
-            test_map, num_test = NBClassify.process_unknown_review(
-                f, test_map, num_test)
-            #Find truthful or deceptive first and save as label_a
-            label_a = NBClassify.classify_label_a(test_map, num_test)
-            #Find positive or negative second and save as label_b
-            label_b = NBClassify.classify_label_b(test_map, num_test)
-            print(label_a, label_b, pathn, file=outfile)
+#Train on Negative and Truthful reviews
+for filename in glob.glob(
+    os.path.join(input_path, NEG, NEG_TRUTH, "fold?", "*.txt")):
+    with open(filename, 'r') as f:
+        num_neg, num_tru, neg_mode_val, tru_mode_val \
+            = NBLearn.process_known_review(f, neg_map, num_neg, neg_mode_val,
+                tru_map, num_tru, tru_mode_val)
+
+#Train on Negative and Deceptive reviews
+for filename in glob.glob(
+    os.path.join(input_path, NEG, NEG_DECEP, "fold?", "*.txt")):
+    with open(filename, 'r') as f:
+        num_neg, num_dec, neg_mode_val, dec_mode_val \
+            = NBLearn.process_known_review(f, neg_map, num_neg, neg_mode_val,
+                dec_map, num_dec, dec_mode_val)
+
+pos_map = \
+    dict(sorted(pos_map.items(), key=lambda item: item[1], reverse=True)[:100])
+tru_map = \
+    dict(sorted(tru_map.items(), key=lambda item: item[1], reverse=True)[:100])
+neg_map = \
+    dict(sorted(neg_map.items(), key=lambda item: item[1], reverse=True)[:100])
+dec_map = \
+    dict(sorted(dec_map.items(), key=lambda item: item[1], reverse=True)[:100])
+
+#Combine model into one master dictionary
+master_dict = {
+    "global_vocab": list(NBLearn.global_vocab),
+    "pos_map": pos_map,
+    "tru_map": tru_map,
+    "neg_map": neg_map,
+    "dec_map": dec_map,
+    "num_pos": num_pos,
+    "num_tru": num_tru,
+    "num_neg": num_neg,
+    "num_dec": num_dec,
+    "pos_mode_val": pos_mode_val,
+    "tru_mode_val": tru_mode_val,
+    "neg_mode_val": neg_mode_val,
+    "dec_mode_val": dec_mode_val,
+}
+
+#Write as JSON object to .txt file
+with open('./nbmodel.txt', 'w') as out_file:
+    json.dump(master_dict, out_file, indent=4)
 #################
