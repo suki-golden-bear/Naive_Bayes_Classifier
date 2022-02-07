@@ -98,7 +98,7 @@ dec_mode_val = 0
 input_path = sys.argv[1]
 
 #Train on Positive and Truthful reviews
-for filename in glob.glob(
+for filename in glob.iglob(
     os.path.join(input_path, POS, POS_TRUTH, "fold?", "*.txt")):
     with open(filename, 'r') as f:
         num_pos, num_tru, pos_mode_val, tru_mode_val \
@@ -106,7 +106,7 @@ for filename in glob.glob(
                 tru_map, num_tru, tru_mode_val)
 
 #Train on Positive and Deceptive reviews
-for filename in glob.glob(
+for filename in glob.iglob(
     os.path.join(input_path, POS, POS_DECEP, "fold?", "*.txt")):
     with open(filename, 'r') as f:
         num_pos, num_dec, pos_mode_val, dec_mode_val \
@@ -114,7 +114,7 @@ for filename in glob.glob(
                 dec_map, num_dec, dec_mode_val)
 
 #Train on Negative and Truthful reviews
-for filename in glob.glob(
+for filename in glob.iglob(
     os.path.join(input_path, NEG, NEG_TRUTH, "fold?", "*.txt")):
     with open(filename, 'r') as f:
         num_neg, num_tru, neg_mode_val, tru_mode_val \
@@ -122,7 +122,7 @@ for filename in glob.glob(
                 tru_map, num_tru, tru_mode_val)
 
 #Train on Negative and Deceptive reviews
-for filename in glob.glob(
+for filename in glob.iglob(
     os.path.join(input_path, NEG, NEG_DECEP, "fold?", "*.txt")):
     with open(filename, 'r') as f:
         num_neg, num_dec, neg_mode_val, dec_mode_val \
