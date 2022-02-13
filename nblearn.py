@@ -1,7 +1,8 @@
 #Author: Suki Sahota
 class NBLearn:
     #Set of stop words
-    STOP_WORDS = { 'the', 'and', 'The', 'was', 'for', 'with', 'were', 'that' } 
+    STOP_WORDS = { 'arrived', 'much', 'bathroom', 'make', 'door', 'seemed', 'over', \
+                  'while', 'are', 'the', 'had', 'and', 'The', 'was', 'for', 'were', 'that' } 
 
     AMP = '&'
     CLOSING_ANG = '>'
@@ -28,6 +29,8 @@ class NBLearn:
         COLON_SEMI, COMMA, DASH, DOT, EQUAL, EXCLAMATION, OPENING_ANG,
         OPENING_BRA, OPENING_PAR, PLUS, POUND, QUESTION, QUOTE_DOUBLE,
         QUOTE_SINGLE, SLASH, STAR }
+    
+    MAX_WORDS = 300
 
     global_vocab = set() #List of entire vocabulary for all classes
 
@@ -35,7 +38,11 @@ class NBLearn:
     def process_known_review(f, first_map, num_first, first_mode_val,
         second_map, num_second, second_mode_val):
         for line in f:
-            for raw_word in line.split():
+            for count, raw_word in enumerate(line.split()):
+                #Max review size is 300 words
+                if count == NBLearn.MAX_WORDS:
+                    break
+                
                 word = NBLearn.sanitize_word(raw_word.strip())
                 if len(word) < 3:
                     continue
@@ -66,96 +73,99 @@ class NBLearn:
         return word
 
 ###Driver code###
-import glob
-import json
-import os
-import sys
+if __name__ == '__main__':
+    import glob
+    import json
+    import os
+    import sys
 
-POS = 'positive_polarity'
-POS_TRUTH = 'truthful_from_TripAdvisor'
-POS_DECEP = 'deceptive_from_MTurk'
-NEG = 'negative_polarity'
-NEG_TRUTH = 'truthful_from_Web'
-NEG_DECEP = 'deceptive_from_MTurk' #Same name as from positive, deceptive
+    POS = 'positive_polarity'
+    POS_TRUTH = 'truthful_from_TripAdvisor'
+    POS_DECEP = 'deceptive_from_MTurk'
+    NEG = 'negative_polarity'
+    NEG_TRUTH = 'truthful_from_Web'
+    NEG_DECEP = 'deceptive_from_MTurk' #Same name as from positive, deceptive
+    
+    DICT_LEN = 200
 
-#Maps to store key=word and value=frequency of word
-pos_map = {} #Positive
-tru_map = {} #Truthful
-neg_map = {} #Negative
-dec_map = {} #Deceptive
+    #Maps to store key=word and value=frequency of word
+    pos_map = {} #Positive
+    tru_map = {} #Truthful
+    neg_map = {} #Negative
+    dec_map = {} #Deceptive
 
-#Total number of non–stop words per classification
-num_pos = 0
-num_tru = 0
-num_neg = 0
-num_dec = 0
+    #Total number of non–stop words per classification
+    num_pos = 0
+    num_tru = 0
+    num_neg = 0
+    num_dec = 0
 
-pos_mode_val = 0
-tru_mode_val = 0
-neg_mode_val = 0
-dec_mode_val = 0
+    pos_mode_val = 0
+    tru_mode_val = 0
+    neg_mode_val = 0
+    dec_mode_val = 0
 
-input_path = sys.argv[1]
+    input_path = sys.argv[1]
 
-#Train on Positive and Truthful reviews
-for filename in glob.iglob(
-    os.path.join(input_path, POS, POS_TRUTH, "fold?", "*.txt")):
-    with open(filename, 'r') as f:
-        num_pos, num_tru, pos_mode_val, tru_mode_val \
-            = NBLearn.process_known_review(f, pos_map, num_pos, pos_mode_val,
-                tru_map, num_tru, tru_mode_val)
+    #Train on Positive and Truthful reviews
+    for filename in glob.iglob(
+        os.path.join(input_path, POS, POS_TRUTH, "fold?", "*.txt")):
+        with open(filename, 'r') as f:
+            num_pos, num_tru, pos_mode_val, tru_mode_val \
+                = NBLearn.process_known_review(f, pos_map, num_pos, pos_mode_val,
+                    tru_map, num_tru, tru_mode_val)
 
-#Train on Positive and Deceptive reviews
-for filename in glob.iglob(
-    os.path.join(input_path, POS, POS_DECEP, "fold?", "*.txt")):
-    with open(filename, 'r') as f:
-        num_pos, num_dec, pos_mode_val, dec_mode_val \
-            = NBLearn.process_known_review(f, pos_map, num_pos, pos_mode_val,
-                dec_map, num_dec, dec_mode_val)
+    #Train on Positive and Deceptive reviews
+    for filename in glob.iglob(
+        os.path.join(input_path, POS, POS_DECEP, "fold?", "*.txt")):
+        with open(filename, 'r') as f:
+            num_pos, num_dec, pos_mode_val, dec_mode_val \
+                = NBLearn.process_known_review(f, pos_map, num_pos, pos_mode_val,
+                    dec_map, num_dec, dec_mode_val)
 
-#Train on Negative and Truthful reviews
-for filename in glob.iglob(
-    os.path.join(input_path, NEG, NEG_TRUTH, "fold?", "*.txt")):
-    with open(filename, 'r') as f:
-        num_neg, num_tru, neg_mode_val, tru_mode_val \
-            = NBLearn.process_known_review(f, neg_map, num_neg, neg_mode_val,
-                tru_map, num_tru, tru_mode_val)
+    #Train on Negative and Truthful reviews
+    for filename in glob.iglob(
+        os.path.join(input_path, NEG, NEG_TRUTH, "fold?", "*.txt")):
+        with open(filename, 'r') as f:
+            num_neg, num_tru, neg_mode_val, tru_mode_val \
+                = NBLearn.process_known_review(f, neg_map, num_neg, neg_mode_val,
+                    tru_map, num_tru, tru_mode_val)
 
-#Train on Negative and Deceptive reviews
-for filename in glob.iglob(
-    os.path.join(input_path, NEG, NEG_DECEP, "fold?", "*.txt")):
-    with open(filename, 'r') as f:
-        num_neg, num_dec, neg_mode_val, dec_mode_val \
-            = NBLearn.process_known_review(f, neg_map, num_neg, neg_mode_val,
-                dec_map, num_dec, dec_mode_val)
+    #Train on Negative and Deceptive reviews
+    for filename in glob.iglob(
+        os.path.join(input_path, NEG, NEG_DECEP, "fold?", "*.txt")):
+        with open(filename, 'r') as f:
+            num_neg, num_dec, neg_mode_val, dec_mode_val \
+                = NBLearn.process_known_review(f, neg_map, num_neg, neg_mode_val,
+                    dec_map, num_dec, dec_mode_val)
 
-pos_map = \
-    dict(sorted(pos_map.items(), key=lambda item: item[1], reverse=True)[:100])
-tru_map = \
-    dict(sorted(tru_map.items(), key=lambda item: item[1], reverse=True)[:100])
-neg_map = \
-    dict(sorted(neg_map.items(), key=lambda item: item[1], reverse=True)[:100])
-dec_map = \
-    dict(sorted(dec_map.items(), key=lambda item: item[1], reverse=True)[:100])
+    pos_map = \
+        dict(sorted(pos_map.items(), key=lambda item: item[1], reverse=True)[:DICT_LEN])
+    tru_map = \
+        dict(sorted(tru_map.items(), key=lambda item: item[1], reverse=True)[:DICT_LEN])
+    neg_map = \
+        dict(sorted(neg_map.items(), key=lambda item: item[1], reverse=True)[:DICT_LEN])
+    dec_map = \
+        dict(sorted(dec_map.items(), key=lambda item: item[1], reverse=True)[:DICT_LEN])
+    
+    #Combine model into one master dictionary
+    master_dict = {
+        "global_vocab": list(NBLearn.global_vocab),
+        "pos_map": pos_map,
+        "tru_map": tru_map,
+        "neg_map": neg_map,
+        "dec_map": dec_map,
+        "num_pos": num_pos,
+        "num_tru": num_tru,
+        "num_neg": num_neg,
+        "num_dec": num_dec,
+        "pos_mode_val": pos_mode_val,
+        "tru_mode_val": tru_mode_val,
+        "neg_mode_val": neg_mode_val,
+        "dec_mode_val": dec_mode_val
+    }
 
-#Combine model into one master dictionary
-master_dict = {
-    "global_vocab": list(NBLearn.global_vocab),
-    "pos_map": pos_map,
-    "tru_map": tru_map,
-    "neg_map": neg_map,
-    "dec_map": dec_map,
-    "num_pos": num_pos,
-    "num_tru": num_tru,
-    "num_neg": num_neg,
-    "num_dec": num_dec,
-    "pos_mode_val": pos_mode_val,
-    "tru_mode_val": tru_mode_val,
-    "neg_mode_val": neg_mode_val,
-    "dec_mode_val": dec_mode_val,
-}
-
-#Write as JSON object to .txt file
-with open('./nbmodel.txt', 'w') as out_file:
-    json.dump(master_dict, out_file, indent=4)
+    #Write as JSON object to .txt file
+    with open('nbmodel.txt', 'w') as out_file:
+        json.dump(master_dict, out_file, indent=4)
 #################

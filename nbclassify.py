@@ -169,14 +169,14 @@ input_path = sys.argv[1]
 master_dict = {}
 
 #Grab information from model
-with open('./nbmodel.txt') as json_file:
+with open('nbmodel.txt', 'r') as json_file:
     master_dict = json.load(json_file)
 
 NBClassify.set_learned_variables(master_dict)
 
 #Create nboutput.txt file
-with open('./nboutput.txt', 'w') as outfile:
-    for filename in glob.iglob('./'+input_path+'/*/*/*/*.txt'):
+with open('nboutput.txt', 'w') as outfile:
+    for filename in glob.iglob(input_path+'/*/*/*/*.txt'):
         pathn = os.path.relpath(filename) #Print as third element in output
         with open(filename, 'r') as f:
             test_map = {}
